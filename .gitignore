@@ -1,5 +1,4 @@
 .idea/
 .svn/
-lib/*.jar
 target/
 tmp-team/
