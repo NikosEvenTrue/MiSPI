@@ -64,7 +64,8 @@
 	<target name="compile-test" depends="compile">
 		<mkdir dir="${target}/${classes-test}" />
 		<javac srcdir="${test}" destdir="${target}/${classes-test}" 
-				classpath="${target}/${classes}" classpathref="classpath"/>
+			   source="${version-source}" target="${version-target}"
+			   classpath="${target}/${classes}" classpathref="classpath"/>
 	</target>
 	
 	<target name="test" depends="compile-test">
@@ -84,7 +85,7 @@
         </junit>
 	</target>
 
-	<target name="team">
+	<target name="team" depends="compile">
 		<exec executable="svn" outputproperty="svn-log">
 			<arg value="log"/>
 			<arg value="-l"/>
@@ -107,7 +108,7 @@
 					<arg value="${user.dir}/${tmp-team}/"/>
 				</exec>
 				<antcall target="build">
-					<param name="src" value="${user.dir}/${tmp-team}/" />
+					<param name="src" value="${user.dir}/${tmp-team}/${src}" />
 					<param name="jars" value="tmp-jars/" />
 					<param name="name" value="revision${next}" />
 				</antcall>
@@ -120,7 +121,7 @@
 		<delete dir="${target}/tmp-jars" />
 	</target>
 	
-	<target name="war" depends="compile" >
+	<target name="war" depends="compile">
         <war destfile="${target}/wars/${name}.war" webxml="${webXML}">
             <fileset dir="${web}"/>
             <lib dir="${lib}" />
