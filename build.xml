@@ -1,0 +1,140 @@
+<?xml version="1.0"?>
+<project name="MiSPI_lab3" default="compile" basedir=".">
+
+	<property name="ant-lib" value="ant-lib" />
+	
+	<taskdef resource="net/sf/antcontrib/antlib.xml">
+		<classpath>
+			<pathelement location="./${ant-lib}/ant-contrib-1.0b3.jar"/>
+		</classpath>
+	</taskdef>
+
+	<property environment="env"/>
+	<property file="build.properties" />
+	<property name="classes" value="classes" />
+	<property name="classes-test" value="test" />
+	<property name="jars" value="jars" />
+	<property name="name" value="${ant.project.name}"/>
+	<property name="docs" value="docs" />
+	
+	<property name="tmp-team" value="tmp-team" />
+	
+
+	<path id="classpath">
+        <fileset dir="${lib}" includes="**/*.jar"/>
+    </path>
+
+    <target name="compile">
+		<mkdir dir="${target}/${classes}" />
+		<javac srcdir="${src}" destdir="${target}/${classes}" classpathref="classpath"
+			   source="${version-source}" target="${version-target}"
+		       includeantruntime="false" />
+    </target>
+	
+	<target name="build" depends="compile">
+        <jar destfile="${target}/${jars}/${name}.jar" basedir="${target}/${classes}">
+            <manifest>
+                <attribute name="Main-Class" value="${main-class}"/>
+                <attribute name="Package-Version" value="${package-version}"/>
+            </manifest>
+        </jar>
+    </target>
+	
+	<target name="clean">
+        <delete dir="${target}" />
+    </target>
+	
+    <target name="doc" depends="build">
+		<checksum algorithm="SHA-1" file="${target}/${jars}/${name}.jar" property="sha1.digest" />
+		<checksum algorithm="MD5" file="${target}/${jars}/${name}.jar" property="md5.digest" />
+        
+		<javadoc sourcepath="${src}"  
+				 destdir="${target}/${docs}" classpathref="classpath" >
+        </javadoc>
+		
+		<jar update="true" destfile="${target}/${jars}/${name}.jar">
+            <manifest>
+                <attribute name="MD5" value="${sha1.digest}"/>
+                <attribute name="SHA-1" value="${md5.digest}"/>
+            </manifest>
+			<zipfileset dir="${target}/${docs}" prefix="docs"/>
+        </jar>
+    </target>
+	
+	<target name="compile-test" depends="compile">
+		<mkdir dir="${target}/${classes-test}" />
+		<javac srcdir="${test}" destdir="${target}/${classes-test}" 
+				classpath="${target}/${classes}" classpathref="classpath"/>
+	</target>
+	
+	<target name="test" depends="compile-test">
+		<junit printsummary="on" fork="true" haltonfailure="yes">
+			<classpath>
+				<pathelement location="${target}/${classes}" />
+				<pathelement location="${target}/${classes-test}" />
+				<pathelement location="${junit}" />
+				<pathelement location="${junit-harmcrest-core}" />
+			</classpath>
+            <formatter type="plain" usefile="no" />
+            <batchtest>
+                <fileset dir="${test}">
+                    <include name="**/Test*.java" />
+                </fileset>
+            </batchtest>
+        </junit>
+	</target>
+
+	<target name="team">
+		<exec executable="svn" outputproperty="svn-log">
+			<arg value="log"/>
+			<arg value="-l"/>
+			<arg value="4"/>
+			<arg value="--xml"/>
+	    </exec>
+		<for list="1,2,3,4" param="i" delimiter=",">
+			<sequential>
+				<echo message="@{i}" />
+				<propertyregex property="next" override="true" input="${svn-log}"
+					regexp="(revision=&quot;[0-9]+&quot;)" select="\1" global="true"/>
+				<propertyregex property="svn-log" override="true" input="${svn-log}"
+					regexp="${next}" replace="" global="false"/>
+				<propertyregex property="next" override="true" input="${next}"
+					regexp="revision=&quot;([0-9]+)&quot;" select="\1" global="false"/>
+				<exec executable="svn">
+					<arg value="co"/>
+					<arg value="-r${next}"/>
+					<arg value="${svn-repo}"/>
+					<arg value="${user.dir}/${tmp-team}/"/>
+				</exec>
+				<antcall target="build">
+					<param name="src" value="${user.dir}/${tmp-team}/" />
+					<param name="jars" value="tmp-jars/" />
+					<param name="name" value="revision${next}" />
+				</antcall>
+				<delete dir="${tmp-team}" />
+			</sequential>
+		</for>
+		<zip destfile="${target}/${jars}/team.zip">
+			<zipfileset dir="${target}/tmp-jars/" includes="*.jar" />
+		</zip>
+		<delete dir="${target}/tmp-jars" />
+	</target>
+	
+	<target name="war" depends="compile" >
+        <war destfile="${target}/wars/${name}.war" webxml="${webXML}">
+            <fileset dir="${web}"/>
+            <lib dir="${lib}" />
+            <classes dir="${target}/${classes}"/>
+        </war>
+    </target>
+	
+	<target name="deploy" depends="war, test">
+		<copy file="${target}/wars/${name}.war" todir="${deploy-local}" overwrite="true"/>
+	</target>
+	
+	<target name="deploy-remote" depends="war, test">
+		<scp file="${target}/wars/${name}.war" trust="true"
+			 todir="${remote-user}@${deploy-remote}"
+			 port="${remote-port}" password="${remote-password}" />
+	</target>
+</project>
