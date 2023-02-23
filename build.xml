@@ -101,7 +101,7 @@
 					regexp="${next}" replace="" global="false"/>
 				<propertyregex property="next" override="true" input="${next}"
 					regexp="revision=&quot;([0-9]+)&quot;" select="\1" global="false"/>
-				<exec executable="svn">
+				<exec executable="svn" failonerror="yes">
 					<arg value="co"/>
 					<arg value="-r${next}"/>
 					<arg value="${svn-repo}"/>
